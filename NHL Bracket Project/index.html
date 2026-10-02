@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NHL Bracket Challenge - Leaderboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff6b35, #f7931e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            color: #aaa;
+        }
+
+        .leaderboard {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .table-header {
+            display: grid;
+            grid-template-columns: 60px 1fr 150px;
+            gap: 20px;
+            padding: 20px;
+            background: rgba(255, 107, 53, 0.1);
+            border-bottom: 2px solid rgba(255, 107, 53, 0.3);
+            font-weight: 600;
+            font-size: 0.95em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #ff6b35;
+        }
+
+        .table-body {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 60px 1fr 150px;
+            gap: 20px;
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .row:hover {
+            background: rgba(255, 107, 53, 0.1);
+        }
+
+        .row:last-child {
+            border-bottom: none;
+        }
+
+        .rank {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #ff6b35;
+            text-align: center;
+        }
+
+        .rank.first {
+            color: #ffd700;
+            font-size: 1.8em;
+        }
+
+        .rank.second {
+            color: #c0c0c0;
+            font-size: 1.7em;
+        }
+
+        .rank.third {
+            color: #cd7f32;
+            font-size: 1.6em;
+        }
+
+        .bracket-name {
+            font-weight: 500;
+            word-break: break-word;
+        }
+
+        .points {
+            text-align: right;
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #f7931e;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.1em;
+            color: #aaa;
+        }
+
+        .error {
+            background: rgba(255, 67, 67, 0.1);
+            border: 1px solid rgba(255, 67, 67, 0.3);
+            color: #ff4343;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .refresh-btn {
+            display: block;
+            margin: 20px auto;
+            padding: 12px 30px;
+            background: linear-gradient(45deg, #ff6b35, #f7931e);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+        }
+
+        .refresh-btn:active {
+            transform: translateY(0);
+        }
+
+        .last-updated {
+            text-align: center;
+            color: #999;
+            font-size: 0.9em;
+            margin-top: 20px;
+        }
+
+        .medal {
+            display: inline-block;
+            width: 30px;
+            text-align: center;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏒 NHL Bracket Challenge</h1>
+            <p>The Fellas League 2026</p>
+        </div>
+
+        <button class="refresh-btn" onclick="fetchLeaderboard()">🔄 Refresh Leaderboard</button>
+
+        <div class="leaderboard">
+            <div class="table-header">
+                <div>Rank</div>
+                <div>Bracket Name</div>
+                <div>Points</div>
+            </div>
+            <div class="table-body" id="leaderboard-body">
+                <div class="loading">Loading leaderboard...</div>
+            </div>
+        </div>
+
+        <div class="last-updated" id="last-updated"></div>
+    </div>
+
+    <script>
+        const LEAGUE_ID = '73643';
+        const API_URL = `http://localhost:3000/api/league/${LEAGUE_ID}`;
+
+        async function fetchLeaderboard() {
+            const body = document.getElementById('leaderboard-body');
+            
+            try {
+                // Try to fetch from local backend first
+                const response = await fetch(API_URL);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                displayLeaderboard(data.standings);
+                updateLastRefreshed();
+            } catch (error) {
+                console.error('Error fetching leaderboard:', error);
+                body.innerHTML = `
+                    <div class="error">
+                        <strong>⚠️ Error loading data</strong><br>
+                        Make sure the backend server is running on port 3000.<br>
+                        Run: <code>node server.js</code> in the project directory.
+                    </div>
+                `;
+            }
+        }
+
+        function displayLeaderboard(standings) {
+            const body = document.getElementById('leaderboard-body');
+            
+            if (!standings || standings.length === 0) {
+                body.innerHTML = '<div class="error">No standings data available</div>';
+                return;
+            }
+
+            body.innerHTML = standings.map((player, index) => {
+                let rankClass = '';
+                let medal = '';
+                
+                if (index === 0) {
+                    rankClass = 'first';
+                    medal = '🥇';
+                } else if (index === 1) {
+                    rankClass = 'second';
+                    medal = '🥈';
+                } else if (index === 2) {
+                    rankClass = 'third';
+                    medal = '🥉';
+                }
+
+                return `
+                    <div class="row">
+                        <div class="rank ${rankClass}">
+                            ${medal} ${player.rank}
+                        </div>
+                        <div class="bracket-name">${escapeHtml(player.name)}</div>
+                        <div class="points">${player.points}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateLastRefreshed() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            document.getElementById('last-updated').textContent = `Last updated: ${timeString}`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Auto-refresh every 60 seconds
+        setInterval(fetchLeaderboard, 60000);
+
+        // Initial load
+        fetchLeaderboard();
+    </script>
+</body>
+</html>
