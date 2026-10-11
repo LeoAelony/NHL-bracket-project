@@ -1,3 +1,3 @@
-geniune ai slop disclaimer
+genuine ai slop disclaimer
 
 clone of the nhl bracket challenge website but just less slow. 
